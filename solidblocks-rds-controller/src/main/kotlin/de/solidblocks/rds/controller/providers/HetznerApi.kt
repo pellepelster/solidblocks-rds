@@ -1,8 +1,7 @@
 package de.solidblocks.rds.controller.providers
 
-import de.solidblocks.rds.controller.model.RdsInstanceEntity
+import de.solidblocks.rds.controller.model.instances.RdsInstanceEntity
 import de.solidblocks.rds.controller.utils.Constants.cloudInitChecksumLabel
-import de.solidblocks.rds.controller.utils.Constants.labelNamespace
 import de.solidblocks.rds.controller.utils.Constants.managedByLabel
 import de.solidblocks.rds.controller.utils.Constants.versionLabel
 import de.solidblocks.rds.controller.utils.HetznerLabels

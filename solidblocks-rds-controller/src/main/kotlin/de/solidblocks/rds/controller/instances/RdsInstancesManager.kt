@@ -1,15 +1,12 @@
 package de.solidblocks.rds.controller.instances
 
+import de.solidblocks.rds.base.Utils
 import de.solidblocks.rds.controller.api.CreationResult
 import de.solidblocks.rds.controller.api.ValidationResult
 import de.solidblocks.rds.controller.instances.api.RdsInstanceCreateRequest
 import de.solidblocks.rds.controller.instances.api.RdsInstanceResponse
-import de.solidblocks.rds.controller.model.ProviderEntity
-import de.solidblocks.rds.controller.model.RdsInstancesRepository
-import de.solidblocks.rds.controller.providers.HetznerApi
-import de.solidblocks.rds.controller.utils.Constants.data1VolumeName
-import de.solidblocks.rds.controller.utils.Constants.serverName
-import de.solidblocks.rds.controller.utils.Constants.sshKeyName
+import de.solidblocks.rds.controller.model.Constants
+import de.solidblocks.rds.controller.model.instances.RdsInstancesRepository
 import de.solidblocks.rds.controller.utils.ErrorCodes
 import mu.KotlinLogging
 import java.util.*
@@ -17,29 +14,6 @@ import java.util.*
 class RdsInstancesManager(private val repository: RdsInstancesRepository) {
 
     private val logger = KotlinLogging.logger {}
-
-    fun apply(hetznerApi: HetznerApi, provider: ProviderEntity): Boolean {
-        val instances = repository.list(provider.id)
-
-        if (!hetznerApi.cleanupServersNotInList(instances)) {
-            logger.error {
-                "cleaning up deleted servers failed"
-            }
-
-            return false
-        }
-
-        return instances.map {
-            logger.info {
-                "applying config for instance '${it.name}'"
-            }
-
-            hetznerApi.ensureVolume(data1VolumeName(it))
-            hetznerApi.ensureServer(serverName(it), data1VolumeName(it), "", sshKeyName(provider))
-
-            true
-        }.all { it }
-    }
 
     fun get(id: UUID) = repository.read(id)?.let {
         RdsInstanceResponse(it.id, it.name)
@@ -51,6 +25,8 @@ class RdsInstancesManager(private val repository: RdsInstancesRepository) {
         RdsInstanceResponse(it.id, it.name)
     }
 
+    fun listInternal() = repository.list()
+
     fun validate(request: RdsInstanceCreateRequest): ValidationResult {
 
         if (repository.exists(request.name)) {
@@ -61,6 +37,15 @@ class RdsInstancesManager(private val repository: RdsInstancesRepository) {
     }
 
     fun create(request: RdsInstanceCreateRequest): CreationResult<RdsInstanceResponse> {
+
+        /*
+        val serverCa = Utils.createCertificate()
+
+
+        if (!repository.exists(DEFAULT_CONTROLLER_NAME)) {
+            repository.create(DEFAULT_CONTROLLER_NAME, mapOf(Constants.CA_PUBLIC_KEY to serverCa.privateKey, Constants.CA_PRIVATE_KEY to serverCa.privateKey))
+        }
+        */
 
         val entity = repository.create(
             request.provider, request.name, mapOf()

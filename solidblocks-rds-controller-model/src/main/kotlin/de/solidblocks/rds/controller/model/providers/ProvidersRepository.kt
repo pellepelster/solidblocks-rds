@@ -1,5 +1,8 @@
-package de.solidblocks.rds.controller.model
+package de.solidblocks.rds.controller.model.providers
 
+import de.solidblocks.rds.controller.model.BaseRepository
+import de.solidblocks.rds.controller.model.CloudConfigValue
+import de.solidblocks.rds.controller.model.controllers.ControllerEntity
 import de.solidblocks.rds.controller.model.tables.references.CONFIGURATION_VALUES
 import de.solidblocks.rds.controller.model.tables.references.PROVIDERS
 import org.jooq.Condition
@@ -12,13 +15,14 @@ class ProvidersRepository(dsl: DSLContext) : BaseRepository(dsl) {
 
     fun create(
         name: String,
+        controller: ControllerEntity,
         configValues: Map<String, String> = emptyMap()
     ): ProviderEntity? {
         val id = UUID.randomUUID()
 
         dsl.insertInto(PROVIDERS).columns(
-            PROVIDERS.ID, PROVIDERS.NAME, PROVIDERS.DELETED
-        ).values(id, name, false).execute()
+            PROVIDERS.ID, PROVIDERS.CONTROLLER, PROVIDERS.NAME, PROVIDERS.DELETED
+        ).values(id, controller.id, name, false).execute()
 
         configValues.forEach {
             setConfiguration(ProviderId(id), it.key, it.value)

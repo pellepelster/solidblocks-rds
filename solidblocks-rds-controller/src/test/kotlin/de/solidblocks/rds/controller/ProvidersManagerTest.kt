@@ -1,12 +1,13 @@
 package de.solidblocks.rds.controller
 
 import de.solidblocks.rds.base.Database
-import de.solidblocks.rds.controller.instances.RdsInstancesManager
-import de.solidblocks.rds.controller.model.ProvidersRepository
+import de.solidblocks.rds.controller.controllers.ControllersManager
+import de.solidblocks.rds.controller.model.providers.ProvidersRepository
 import de.solidblocks.rds.controller.providers.ProvidersManager
 import de.solidblocks.rds.controller.providers.api.ProviderCreateRequest
 import de.solidblocks.rds.test.ManagementTestDatabaseExtension
 import io.mockk.mockk
+import io.mockk.mockkClass
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -18,7 +19,7 @@ class ProvidersManagerTest {
     fun testCreate(database: Database) {
         val repository = ProvidersRepository(database.dsl)
 
-        val manager = ProvidersManager(repository, mockk<RdsInstancesManager>())
+        val manager = ProvidersManager(repository, mockk())
 
         val request = ProviderCreateRequest("name1", "apiKey1")
         val created = manager.create(request)

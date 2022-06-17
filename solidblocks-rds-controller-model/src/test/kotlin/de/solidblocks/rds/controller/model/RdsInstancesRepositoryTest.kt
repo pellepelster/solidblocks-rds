@@ -1,7 +1,10 @@
 package de.solidblocks.rds.controller.model
 
 import de.solidblocks.rds.base.Database
+import de.solidblocks.rds.controller.model.instances.RdsInstancesRepository
+import de.solidblocks.rds.controller.model.providers.ProvidersRepository
 import de.solidblocks.rds.test.ManagementTestDatabaseExtension
+import io.mockk.mockk
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
@@ -18,7 +21,7 @@ class RdsInstancesRepositoryTest {
     @BeforeAll
     fun beforeAll(database: Database) {
         val repository = ProvidersRepository(database.dsl)
-        val provider = repository.create("provider-${UUID.randomUUID()}")
+        val provider = repository.create("provider-${UUID.randomUUID()}", mockk())
         providerId = provider!!.id
     }
 

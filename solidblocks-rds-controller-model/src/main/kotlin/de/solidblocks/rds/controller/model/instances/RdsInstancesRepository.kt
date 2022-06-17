@@ -1,5 +1,7 @@
-package de.solidblocks.rds.controller.model
+package de.solidblocks.rds.controller.model.instances
 
+import de.solidblocks.rds.controller.model.BaseRepository
+import de.solidblocks.rds.controller.model.CloudConfigValue
 import de.solidblocks.rds.controller.model.tables.references.CONFIGURATION_VALUES
 import de.solidblocks.rds.controller.model.tables.references.RDS_INSTANCES
 import org.jooq.Condition
@@ -45,6 +47,7 @@ class RdsInstancesRepository(dsl: DSLContext) : BaseRepository(dsl) {
             RdsInstanceEntity(
                 id = it.key.id!!,
                 name = it.key.name!!,
+                provider = it.key.provider!!,
                 configValues = it.value.map {
                     if (it.getValue(CONFIGURATION_VALUES.KEY_) == null) {
                         null

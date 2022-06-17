@@ -1,9 +1,11 @@
 package de.solidblocks.rds.controller.model
 
 import de.solidblocks.rds.base.Database
+import de.solidblocks.rds.controller.model.providers.ProvidersRepository
 import de.solidblocks.rds.controller.model.tables.references.CONFIGURATION_VALUES
 import de.solidblocks.rds.controller.model.tables.references.PROVIDERS
 import de.solidblocks.rds.test.ManagementTestDatabaseExtension
+import io.mockk.mockk
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -25,7 +27,7 @@ class ProvidersRepositoryTest {
         val repository = ProvidersRepository(database.dsl)
 
         assertThat(repository.exists("provider-exists")).isFalse
-        repository.create("provider-exists")
+        repository.create("provider-exists", mockk())
         assertThat(repository.exists("provider-exists")).isTrue
     }
 
@@ -33,7 +35,7 @@ class ProvidersRepositoryTest {
     fun testDelete(database: Database) {
         val repository = ProvidersRepository(database.dsl)
 
-        val provider = repository.create("provider-delete")
+        val provider = repository.create("provider-delete", mockk())
         assertThat(repository.exists("provider-delete")).isTrue
         assertThat(repository.listDeleted()).isEmpty()
 
@@ -46,7 +48,7 @@ class ProvidersRepositoryTest {
     fun testDeleteWithConfigValues(database: Database) {
         val repository = ProvidersRepository(database.dsl)
 
-        val provider = repository.create("provider-delete-with-config-values", mapOf("key1" to "value1"))
+        val provider = repository.create("provider-delete-with-config-values", mockk(), mapOf("key1" to "value1"))
         assertThat(repository.exists("provider-delete-with-config-values")).isTrue
 
         repository.delete(provider!!.id)
@@ -57,7 +59,7 @@ class ProvidersRepositoryTest {
     fun testUpdate(database: Database) {
         val repository = ProvidersRepository(database.dsl)
 
-        repository.create("provider-update-config-value")
+        repository.create("provider-update-config-value", mockk())
 
         assertThat(repository.update("non-existing-instance", "key1", "value1")).isFalse
         assertThat(repository.update("provider-update-config-value", "key1", "value1")).isTrue
@@ -86,7 +88,7 @@ class ProvidersRepositoryTest {
         val repository = ProvidersRepository(database.dsl)
 
         assertThat(repository.read("provider1")).isNull()
-        repository.create("provider1", mapOf("abc" to "def"))
+        repository.create("provider1", mockk(), mapOf("abc" to "def"))
 
         val provider1 = repository.read("provider1")!!
         assertThat(provider1).isNotNull
@@ -99,7 +101,7 @@ class ProvidersRepositoryTest {
     fun testCreateWithoutConfigValues(database: Database) {
         val repository = ProvidersRepository(database.dsl)
 
-        repository.create("provider-without-config-values")
+        repository.create("provider-without-config-values", mockk())
 
         val instance = repository.read("provider-without-config-values")!!
 
