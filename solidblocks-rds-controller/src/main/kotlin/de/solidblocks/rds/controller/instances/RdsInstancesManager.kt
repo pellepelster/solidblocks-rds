@@ -3,15 +3,23 @@ package de.solidblocks.rds.controller.instances
 import de.solidblocks.rds.base.Utils
 import de.solidblocks.rds.controller.api.CreationResult
 import de.solidblocks.rds.controller.api.ValidationResult
+import de.solidblocks.rds.controller.controllers.ControllersManager
 import de.solidblocks.rds.controller.instances.api.RdsInstanceCreateRequest
 import de.solidblocks.rds.controller.instances.api.RdsInstanceResponse
 import de.solidblocks.rds.controller.model.Constants
+import de.solidblocks.rds.controller.model.Constants.SERVER_PRIVATE_KEY
+import de.solidblocks.rds.controller.model.Constants.SERVER_PUBLIC_KEY
+import de.solidblocks.rds.controller.model.instances.RdsInstanceEntity
 import de.solidblocks.rds.controller.model.instances.RdsInstancesRepository
+import de.solidblocks.rds.controller.providers.ProvidersManager
 import de.solidblocks.rds.controller.utils.ErrorCodes
 import mu.KotlinLogging
 import java.util.*
 
-class RdsInstancesManager(private val repository: RdsInstancesRepository) {
+class RdsInstancesManager(
+    private val repository: RdsInstancesRepository,
+    private val controllersManager: ControllersManager
+) {
 
     private val logger = KotlinLogging.logger {}
 
@@ -38,17 +46,16 @@ class RdsInstancesManager(private val repository: RdsInstancesRepository) {
 
     fun create(request: RdsInstanceCreateRequest): CreationResult<RdsInstanceResponse> {
 
-        /*
-        val serverCa = Utils.createCertificate()
 
-
-        if (!repository.exists(DEFAULT_CONTROLLER_NAME)) {
-            repository.create(DEFAULT_CONTROLLER_NAME, mapOf(Constants.CA_PUBLIC_KEY to serverCa.privateKey, Constants.CA_PRIVATE_KEY to serverCa.privateKey))
-        }
-        */
+        val controller = controllersManager.defaultController()
+        val serverKeyPair = Utils.createCertificate(controller.caServerPrivateKey(), controller.caServerPrivateKey())
 
         val entity = repository.create(
-            request.provider, request.name, mapOf()
+            request.provider, request.name,
+            mapOf(
+                SERVER_PRIVATE_KEY to serverKeyPair.privateKey,
+                SERVER_PUBLIC_KEY to serverKeyPair.publicKey,
+            )
         )
 
         return CreationResult(

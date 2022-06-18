@@ -39,7 +39,7 @@ class ControllersRepository(dsl: DSLContext) : BaseRepository(dsl) {
         val latest = latestConfigurationValuesQuery(CONFIGURATION_VALUES.RDS_INSTANCE)
 
         return dsl.selectFrom(
-            controllers.leftJoin(latest).on(controllers.ID.eq(latest.field(CONFIGURATION_VALUES.RDS_INSTANCE)))
+            controllers.leftJoin(latest).on(controllers.ID.eq(latest.field(CONFIGURATION_VALUES.CONTROLLER)))
         ).where(filterConditions).fetchGroups({ it.into(controllers) }, { it.into(latest) }).map {
             ControllerEntity(
                 id = it.key.id!!,

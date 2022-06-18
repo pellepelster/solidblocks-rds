@@ -1,5 +1,6 @@
 package de.solidblocks.rds.controller.instances
 
+import de.solidblocks.rds.cloudinit.CloudInitTemplates
 import de.solidblocks.rds.controller.controllers.ControllersManager
 import de.solidblocks.rds.controller.model.providers.ProviderEntity
 import de.solidblocks.rds.controller.model.instances.RdsInstanceEntity
@@ -8,9 +9,16 @@ import de.solidblocks.rds.controller.providers.ProvidersManager
 import de.solidblocks.rds.controller.utils.Constants.LOCATION.*
 import de.solidblocks.rds.controller.utils.Constants.data1VolumeName
 import de.solidblocks.rds.controller.utils.Constants.serverName
+import de.solidblocks.rds.shared.SharedConstants.githubPat
+import de.solidblocks.rds.shared.SharedConstants.githubUsername
+import de.solidblocks.rds.shared.solidblocksVersion
 import mu.KotlinLogging
 
-class RdsInstancesWorker(val rdsInstancesManager: RdsInstancesManager, val providersManager: ProvidersManager, val controllersManager: ControllersManager) {
+class RdsInstancesWorker(
+    val rdsInstancesManager: RdsInstancesManager,
+    val providersManager: ProvidersManager,
+    val controllersManager: ControllersManager
+) {
 
     private val logger = KotlinLogging.logger {}
 
@@ -79,6 +87,7 @@ class RdsInstancesWorker(val rdsInstancesManager: RdsInstancesManager, val provi
 
         val volumeName = data1VolumeName(rdsInstance, location)
         val serverName = serverName(rdsInstance, location)
+
         val sshKeyName = providersManager.sshKeyName(rdsInstance.provider) ?: run {
             logger.info { "could not find ssh key name for provider '${rdsInstance.provider}'" }
             return false
@@ -92,7 +101,22 @@ class RdsInstancesWorker(val rdsInstancesManager: RdsInstancesManager, val provi
             return false
         }
 
-        val serverInfo = hetznerApi.ensureServer(serverName, volumeName, "", sshKeyName) ?: run {
+
+        val controller = controllersManager.defaultController()
+
+
+        val cloudInit = CloudInitTemplates.solidblocksRdsCloudInit(
+            solidblocksVersion(),
+            "/dev/xyz",
+            serverName,
+            githubUsername,
+            githubPat,
+            controller.caClientPublicKey(),
+            rdsInstance.serverPrivateKey(),
+            rdsInstance.serverPublicKey(),
+            "solidblocks-rds-postgresql-agent"
+        )
+        val serverInfo = hetznerApi.ensureServer(serverName, volumeName, cloudInit, sshKeyName) ?: run {
             logger.info {
                 "could not server '${serverName}' for rds instance '${rdsInstance.name}'"
             }
@@ -100,7 +124,6 @@ class RdsInstancesWorker(val rdsInstancesManager: RdsInstancesManager, val provi
             return false
         }
 
-        val controller = controllersManager.defaultController()
 
         return true
     }

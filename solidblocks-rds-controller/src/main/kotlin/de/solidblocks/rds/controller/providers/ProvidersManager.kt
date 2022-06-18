@@ -23,7 +23,6 @@ class ProvidersManager(
 
     private val logger = KotlinLogging.logger {}
 
-
     fun get(id: UUID) = repository.read(id)?.let {
         ProviderResponse(it.id, it.name)
     }
@@ -75,4 +74,5 @@ class ProvidersManager(
     fun createProviderInstance(id: UUID) = repository.read(id)?.let { HetznerApi(it.apiKey()) }
 
     fun sshKeyName(id: UUID) = repository.read(id)?.let { Constants.sshKeyName(it) }
+
 }

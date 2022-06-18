@@ -10,7 +10,7 @@ import de.solidblocks.rds.controller.model.controllers.ControllerEntity
 import de.solidblocks.rds.controller.model.controllers.ControllersRepository
 import mu.KotlinLogging
 
-class ControllersManager(val repository: ControllersRepository) {
+class ControllersManager(private val repository: ControllersRepository) {
 
     private val logger = KotlinLogging.logger {}
 
@@ -21,13 +21,12 @@ class ControllersManager(val repository: ControllersRepository) {
     }
 
     private fun ensureDefaultController() {
-
-        val serverCa = Utils.generateCAKeyPAir()
-        val clientCa = Utils.generateCAKeyPAir()
-
         if (!repository.exists(DEFAULT_CONTROLLER_NAME)) {
-            repository.create(DEFAULT_CONTROLLER_NAME, mapOf(
 
+            val serverCa = Utils.generateCAKeyPAir()
+            val clientCa = Utils.generateCAKeyPAir()
+
+            repository.create(DEFAULT_CONTROLLER_NAME, mapOf(
                 CA_SERVER_PRIVATE_KEY to serverCa.privateKey,
                 CA_SERVER_PUBLIC_KEY to serverCa.publicKey,
 
@@ -41,4 +40,5 @@ class ControllersManager(val repository: ControllersRepository) {
         ensureDefaultController()
         return repository.read(DEFAULT_CONTROLLER_NAME)!!
     }
+
 }

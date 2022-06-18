@@ -60,7 +60,7 @@ class SolidlocksRdsIntegrationTest {
         val providersManager = ProvidersManager(ProvidersRepository(database.dsl), controllersManager)
         val providersWorker = ProvidersWorker(providersManager)
 
-        val rdsInstancesManager = RdsInstancesManager(RdsInstancesRepository(database.dsl))
+        val rdsInstancesManager = RdsInstancesManager(RdsInstancesRepository(database.dsl), controllersManager)
         val rdsInstancesWorker = RdsInstancesWorker(rdsInstancesManager, providersManager, controllersManager)
 
         val provider =
