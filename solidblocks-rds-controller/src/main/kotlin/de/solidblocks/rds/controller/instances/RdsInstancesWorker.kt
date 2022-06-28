@@ -1,5 +1,6 @@
 package de.solidblocks.rds.controller.instances
 
+import de.solidblocks.rds.agent.MtlsHttpClient
 import de.solidblocks.rds.cloudinit.CloudInitTemplates
 import de.solidblocks.rds.controller.controllers.ControllersManager
 import de.solidblocks.rds.controller.model.providers.ProviderEntity
@@ -11,13 +12,15 @@ import de.solidblocks.rds.controller.utils.Constants.data1VolumeName
 import de.solidblocks.rds.controller.utils.Constants.serverName
 import de.solidblocks.rds.shared.SharedConstants.githubPat
 import de.solidblocks.rds.shared.SharedConstants.githubUsername
+import de.solidblocks.rds.shared.VersionResponse
 import de.solidblocks.rds.shared.solidblocksVersion
 import mu.KotlinLogging
+import java.util.UUID
 
 class RdsInstancesWorker(
-    val rdsInstancesManager: RdsInstancesManager,
-    val providersManager: ProvidersManager,
-    val controllersManager: ControllersManager
+    private val rdsInstancesManager: RdsInstancesManager,
+    private val providersManager: ProvidersManager,
+    private val controllersManager: ControllersManager
 ) {
 
     private val logger = KotlinLogging.logger {}
@@ -102,8 +105,8 @@ class RdsInstancesWorker(
         }
 
 
-        val controller = controllersManager.defaultController()
-
+        val provider = providersManager.read(rdsInstance.provider) ?: return false
+        val controller = controllersManager.readInternal(provider.controller) ?: return false
 
         val cloudInit = CloudInitTemplates.solidblocksRdsCloudInit(
             solidblocksVersion(),
@@ -116,7 +119,8 @@ class RdsInstancesWorker(
             rdsInstance.serverPublicKey(),
             "solidblocks-rds-postgresql-agent"
         )
-        val serverInfo = hetznerApi.ensureServer(serverName, volumeName, cloudInit, sshKeyName) ?: run {
+
+        hetznerApi.ensureServer(serverName, volumeName, cloudInit, sshKeyName) ?: run {
             logger.info {
                 "could not server '${serverName}' for rds instance '${rdsInstance.name}'"
             }
@@ -124,8 +128,53 @@ class RdsInstancesWorker(
             return false
         }
 
-
         return true
+    }
+
+    data class RunningInstanceInfo(val instanceId: UUID, val ipAddress: String)
+
+    fun runningInstances(): List<RunningInstanceInfo> {
+        return rdsInstancesManager.listInternal().map { rdsInstance ->
+            val hetznerApi = providersManager.createProviderInstance(rdsInstance.provider) ?: run {
+                logger.info { "could not create provider instance for rds instance '${rdsInstance.id}'" }
+                return@map null
+            }
+
+            return@map rdsInstance.id to hetznerApi
+        }.filterNotNull().flatMap {
+            it.second.allManagedServers().map { server ->
+                RunningInstanceInfo(it.first, server.publicNet.ipv4.ip)
+            }
+        }
+    }
+
+    data class RunningInstanceStatus(val status: String? = null)
+
+    fun runningInstancesStatus() = runningInstances().map {
+
+        val instance = rdsInstancesManager.read(it.instanceId) ?: return@map RunningInstanceStatus()
+        val provider = providersManager.read(instance.provider) ?: return@map RunningInstanceStatus()
+        val controller = controllersManager.readInternal(provider.controller) ?: return@map RunningInstanceStatus()
+
+        rdsInstancesManager.read(it.instanceId)
+
+        val client = MtlsHttpClient(
+            "https://${it.ipAddress}:8080",
+            controller.caServerPublicKey(),
+            controller.caClientPrivateKey(),
+            controller.caClientPublicKey()
+        )
+
+        try {
+            val version = client.get<VersionResponse>("/v1/agent/version")
+            if (version.isSuccessful) {
+                return@map RunningInstanceStatus(version.data!!.version)
+            }
+        } catch (e: Exception) {
+            return@map RunningInstanceStatus()
+        }
+
+        return@map RunningInstanceStatus()
     }
 
 }

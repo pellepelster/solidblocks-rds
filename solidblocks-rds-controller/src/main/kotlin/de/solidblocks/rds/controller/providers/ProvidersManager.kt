@@ -23,14 +23,16 @@ class ProvidersManager(
 
     private val logger = KotlinLogging.logger {}
 
-    fun get(id: UUID) = repository.read(id)?.let {
-        ProviderResponse(it.id, it.name)
+    fun read(id: UUID) = repository.read(id)?.let {
+        ProviderResponse(it.id, it.name, it.controller)
     }
+
+    fun getInternal(id: UUID) = repository.read(id)
 
     fun delete(id: UUID) = repository.delete(id)
 
     fun list() = repository.list().map {
-        ProviderResponse(it.id, it.name)
+        ProviderResponse(it.id, it.name, it.controller)
     }
 
     fun listInternal() = repository.list()
@@ -56,7 +58,7 @@ class ProvidersManager(
 
         val entity = repository.create(
             request.name,
-            controllersManager.defaultController(),
+            controllersManager.defaultController1(),
             mapOf(
                 API_KEY to request.apiKey,
                 SSH_PUBLIC_KEY to sshKey.publicKey,
@@ -65,8 +67,8 @@ class ProvidersManager(
         )
 
         return CreationResult(
-            entity?.let {
-                ProviderResponse(it.id, it.name)
+            entity.let {
+                ProviderResponse(it.id, it.name, it.controller)
             }
         )
     }

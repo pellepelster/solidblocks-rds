@@ -71,7 +71,7 @@ class ProvidersApi(apiHttpServer: ApiHttpServer, val manager: ProvidersManager) 
             return
         }
 
-        val provider = manager.get(id)
+        val provider = manager.read(id)
 
         if (provider == null) {
             rc.jsonResponse(ProviderResponseWrapper(), 404)

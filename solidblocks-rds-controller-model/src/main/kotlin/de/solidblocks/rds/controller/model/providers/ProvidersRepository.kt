@@ -17,7 +17,7 @@ class ProvidersRepository(dsl: DSLContext) : BaseRepository(dsl) {
         name: String,
         controller: ControllerEntity,
         configValues: Map<String, String> = emptyMap()
-    ): ProviderEntity? {
+    ): ProviderEntity {
         val id = UUID.randomUUID()
 
         dsl.insertInto(PROVIDERS).columns(
@@ -28,10 +28,11 @@ class ProvidersRepository(dsl: DSLContext) : BaseRepository(dsl) {
             setConfiguration(ProviderId(id), it.key, it.value)
         }
 
-        return read(id)!!
+        return read(id) ?: run { throw RuntimeException("could not read created provider") }
     }
 
     fun list(filter: Condition? = null): List<ProviderEntity> = listInternal(providers.DELETED.isFalse.and(filter))
+
     fun listDeleted(): List<ProviderEntity> = listInternal(providers.DELETED.isTrue)
 
     private fun listInternal(filterCondition: Condition): List<ProviderEntity> {
@@ -44,6 +45,7 @@ class ProvidersRepository(dsl: DSLContext) : BaseRepository(dsl) {
             ProviderEntity(
                 id = it.key.id!!,
                 name = it.key.name!!,
+                controller = it.key.controller!!,
                 configValues = it.value.map {
                     if (it.getValue(CONFIGURATION_VALUES.KEY_) == null) {
                         null

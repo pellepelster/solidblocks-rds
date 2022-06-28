@@ -1,5 +1,6 @@
 package de.solidblocks.rds.controller
 
+import de.solidblocks.rds.agent.MtlsHttpClient
 import de.solidblocks.rds.base.Database
 import de.solidblocks.rds.controller.controllers.ControllersManager
 import de.solidblocks.rds.controller.instances.RdsInstancesManager
@@ -12,10 +13,14 @@ import de.solidblocks.rds.controller.providers.HetznerApi
 import de.solidblocks.rds.controller.providers.ProvidersWorker
 import de.solidblocks.rds.controller.providers.ProvidersManager
 import de.solidblocks.rds.controller.providers.api.ProviderCreateRequest
+import de.solidblocks.rds.shared.VersionResponse
 import de.solidblocks.rds.test.ManagementTestDatabaseExtension
 import me.tomsdevsn.hetznercloud.HetznerCloudAPI
 import mu.KotlinLogging
 import org.assertj.core.api.Assertions.assertThat
+import org.awaitility.Awaitility
+import org.awaitility.Awaitility.await
+import org.awaitility.kotlin.await
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Disabled
@@ -23,6 +28,12 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable
 import org.junit.jupiter.api.extension.ExtendWith
+import java.nio.file.Path
+import java.time.Duration
+import java.time.Duration.ofMinutes
+import java.time.Duration.ofSeconds
+import kotlin.io.path.exists
+import kotlin.io.path.readText
 
 @EnabledIfEnvironmentVariable(named = "HCLOUD_TOKEN", matches = ".*")
 @ExtendWith(ManagementTestDatabaseExtension::class)
@@ -32,11 +43,19 @@ class SolidlocksRdsIntegrationTest {
     private val logger = KotlinLogging.logger {}
 
     private val hetznerApi = HetznerApi(System.getenv("HCLOUD_TOKEN"))
+
     private val hetznerCloudAPI = HetznerCloudAPI(System.getenv("HCLOUD_TOKEN"))
 
     @BeforeAll
     fun beforeAll() {
         cleanTestbed()
+
+        val idRsaPub = Path.of("${System.getProperty("user.home")}/.ssh/id_rsa.pub")
+        if (idRsaPub.exists()) {
+            logger.info { "adding debug ssh key '${idRsaPub}'" }
+            val debugSshKeyName = System.getProperty("user.name")
+            hetznerApi.ensureSSHKey(debugSshKeyName, idRsaPub.readText())
+        }
     }
 
     @AfterAll
@@ -60,17 +79,26 @@ class SolidlocksRdsIntegrationTest {
         val providersManager = ProvidersManager(ProvidersRepository(database.dsl), controllersManager)
         val providersWorker = ProvidersWorker(providersManager)
 
-        val rdsInstancesManager = RdsInstancesManager(RdsInstancesRepository(database.dsl), controllersManager)
+        val rdsInstancesManager = RdsInstancesManager(RdsInstancesRepository(database.dsl), providersManager, controllersManager)
         val rdsInstancesWorker = RdsInstancesWorker(rdsInstancesManager, providersManager, controllersManager)
 
         val provider =
             providersManager.create(ProviderCreateRequest(name = "hetzner1", apiKey = System.getenv("HCLOUD_TOKEN")))
-
-        val rdsInstance =
-            rdsInstancesManager.create(RdsInstanceCreateRequest(name = "rds-instance1", provider.data!!.id))
+        rdsInstancesManager.create(RdsInstanceCreateRequest(name = "rds-instance1", provider.data!!.id))
 
         assertThat(providersWorker.work()).isTrue
         assertThat(rdsInstancesWorker.work()).isTrue
+
+        val runningInstancesStatus = await().atMost(ofMinutes(2)).pollInterval(ofSeconds(5)).until({
+            rdsInstancesWorker.runningInstancesStatus()
+        }, { it.isNotEmpty() && it.all { it.status != null } })
+
+
+        runningInstancesStatus.toString()
+        /*
+        assertThat(version.code).isEqualTo(200)
+        assertThat(version.data!!.version).startsWith("SNAPSHOT-")
+         */
     }
 
     @Test

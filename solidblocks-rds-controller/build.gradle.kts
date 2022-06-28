@@ -10,6 +10,7 @@ dependencies {
     implementation(project(":solidblocks-rds-model-shared"))
     implementation(project(":solidblocks-rds-controller-model"))
     implementation(project(":solidblocks-rds-cloud-init"))
+    implementation(project(":solidblocks-rds-postgresql-agent"))
 
     implementation("io.vertx:vertx-web:$vertX")
     implementation("io.vertx:vertx-lang-kotlin:$vertX")

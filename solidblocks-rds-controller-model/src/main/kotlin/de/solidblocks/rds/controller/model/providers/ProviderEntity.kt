@@ -10,6 +10,7 @@ import java.util.UUID
 data class ProviderEntity(
     val id: UUID,
     val name: String,
+    val controller: UUID,
     val configValues: List<CloudConfigValue>
 
 ) {

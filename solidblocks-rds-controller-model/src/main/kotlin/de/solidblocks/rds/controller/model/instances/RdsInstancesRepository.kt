@@ -16,7 +16,7 @@ class RdsInstancesRepository(dsl: DSLContext) : BaseRepository(dsl) {
         providerId: UUID,
         name: String,
         configValues: Map<String, String> = emptyMap()
-    ): RdsInstanceEntity? {
+    ): RdsInstanceEntity {
         val id = UUID.randomUUID()
 
         dsl.insertInto(RDS_INSTANCES).columns(
@@ -27,7 +27,7 @@ class RdsInstancesRepository(dsl: DSLContext) : BaseRepository(dsl) {
             setConfiguration(RdsInstanceId(id), it.key, it.value)
         }
 
-        return read(id)
+        return read(id) ?: run { throw RuntimeException("could not read created rds instance") }
     }
 
     fun list(providerId: UUID) = list(rdsInstances.PROVIDER.eq(providerId))

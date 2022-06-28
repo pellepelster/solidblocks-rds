@@ -158,7 +158,7 @@ class HetznerApi(apiToken: String) {
             return null
         }
 
-        val additionalSSHKeys = hetznerCloudAPI.sshKeys.sshKeys.filter { it.id == sshKey.id }
+        val additionalSSHKeys = hetznerCloudAPI.sshKeys.sshKeys.filter { it.id != sshKey.id }
 
         var server = getServer(serverName)
 

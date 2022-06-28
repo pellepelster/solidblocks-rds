@@ -1,61 +1,35 @@
 package de.solidblocks.rds.controller.model
 
 import de.solidblocks.rds.base.Database
-import de.solidblocks.rds.controller.model.controllers.ControllerEntity
 import de.solidblocks.rds.controller.model.controllers.ControllersRepository
-import de.solidblocks.rds.controller.model.providers.ProvidersRepository
-import de.solidblocks.rds.controller.model.tables.references.CONFIGURATION_VALUES
-import de.solidblocks.rds.controller.model.tables.references.PROVIDERS
 import de.solidblocks.rds.test.ManagementTestDatabaseExtension
 import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
-import java.util.*
 
 @ExtendWith(ManagementTestDatabaseExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class ProvidersRepositoryTest {
-
-    lateinit var controller: ControllerEntity
-
-    @BeforeEach
-    fun beforeAll(database: Database) {
-        database.dsl.deleteFrom(CONFIGURATION_VALUES).execute()
-        database.dsl.deleteFrom(PROVIDERS).execute()
-
-        val controllersRepository = ControllersRepository(database.dsl)
-        controller = controllersRepository.create("controller-${UUID.randomUUID()}")
-    }
-
-    @Test
-    fun testExists(database: Database) {
-        val repository = ProvidersRepository(database.dsl)
-
-        assertThat(repository.exists("exists")).isFalse
-        repository.create("exists", controller)
-        assertThat(repository.exists("exists")).isTrue
-    }
+class ControllersRepositoryTest {
 
     @Test
     fun testDelete(database: Database) {
-        val repository = ProvidersRepository(database.dsl)
+        val repository = ControllersRepository(database.dsl)
 
-        val entity = repository.create("delete", controller)
+        val entity = repository.create("delete")
         assertThat(repository.exists("delete")).isTrue
-        assertThat(repository.listDeleted()).isEmpty()
 
-        repository.delete(entity.id)
+        assertThat(repository.delete(entity.id)).isTrue
         assertThat(repository.exists("delete")).isFalse
-        assertThat(repository.listDeleted()).isNotEmpty
     }
 
     @Test
     fun testDeleteWithConfigValues(database: Database) {
-        val repository = ProvidersRepository(database.dsl)
+        val repository = ControllersRepository(database.dsl)
 
-        val entity = repository.create("delete-with-config-values", controller, mapOf("key1" to "value1"))
+        val entity =
+            repository.create("delete-with-config-values", mapOf("key1" to "label1"))
         assertThat(repository.exists("delete-with-config-values")).isTrue
 
         repository.delete(entity.id)
@@ -64,9 +38,9 @@ class ProvidersRepositoryTest {
 
     @Test
     fun testUpdate(database: Database) {
-        val repository = ProvidersRepository(database.dsl)
+        val repository = ControllersRepository(database.dsl)
 
-        repository.create("update-config-value", controller)
+        repository.create( "update-config-value")
 
         assertThat(repository.update("non-existing", "key1", "value1")).isFalse
         assertThat(repository.update("update-config-value", "key1", "value1")).isTrue
@@ -79,7 +53,6 @@ class ProvidersRepositoryTest {
         assertThat(entity.configValues).hasSize(1)
 
         assertThat(repository.update("update-config-value", "key1", "value2")).isTrue
-
         val updatedEntity = repository.read("update-config-value")!!
         assertThat(updatedEntity).isNotNull
         assertThat(updatedEntity.configValues[0].name).isEqualTo("key1")
@@ -94,10 +67,10 @@ class ProvidersRepositoryTest {
 
     @Test
     fun testCreate(database: Database) {
-        val repository = ProvidersRepository(database.dsl)
+        val repository = ControllersRepository(database.dsl)
 
         assertThat(repository.read("create")).isNull()
-        repository.create("create", controller, mapOf("abc" to "def"))
+        repository.create("create", mapOf("abc" to "def"))
 
         val entity = repository.read("create")!!
         assertThat(entity).isNotNull
@@ -108,13 +81,13 @@ class ProvidersRepositoryTest {
 
     @Test
     fun testCreateWithoutConfigValues(database: Database) {
-        val repository = ProvidersRepository(database.dsl)
+        val repository = ControllersRepository(database.dsl)
 
-        repository.create("create-without-config-values", controller)
+        repository.create("create-without-config-values")
 
-        val instance = repository.read("create-without-config-values")!!
+        val entity = repository.read("create-without-config-values")!!
 
-        assertThat(instance).isNotNull
-        assertThat(instance.configValues).hasSize(0)
+        assertThat(entity).isNotNull
+        assertThat(entity.configValues).hasSize(0)
     }
 }
