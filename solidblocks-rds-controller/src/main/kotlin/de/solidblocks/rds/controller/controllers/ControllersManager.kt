@@ -1,14 +1,12 @@
 package de.solidblocks.rds.controller.controllers
 
 import de.solidblocks.rds.base.Utils
-import de.solidblocks.rds.controller.model.Constants
 import de.solidblocks.rds.controller.model.Constants.CA_CLIENT_PRIVATE_KEY
 import de.solidblocks.rds.controller.model.Constants.CA_CLIENT_PUBLIC_KEY
 import de.solidblocks.rds.controller.model.Constants.CA_SERVER_PRIVATE_KEY
 import de.solidblocks.rds.controller.model.Constants.CA_SERVER_PUBLIC_KEY
 import de.solidblocks.rds.controller.model.controllers.ControllerEntity
 import de.solidblocks.rds.controller.model.controllers.ControllersRepository
-import de.solidblocks.rds.controller.providers.api.ProviderResponse
 import mu.KotlinLogging
 import java.util.*
 
@@ -38,7 +36,7 @@ class ControllersManager(private val repository: ControllersRepository) {
         }
     }
 
-    fun defaultController1(): ControllerEntity {
+    fun defaultController(): ControllerEntity {
         ensureDefaultController()
         return repository.read(DEFAULT_CONTROLLER_NAME)!!
     }

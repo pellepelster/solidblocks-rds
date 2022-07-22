@@ -3,6 +3,7 @@ package de.solidblocks.rds.controller.model
 import de.solidblocks.rds.base.Database
 import de.solidblocks.rds.controller.model.controllers.ControllerEntity
 import de.solidblocks.rds.controller.model.controllers.ControllersRepository
+import de.solidblocks.rds.controller.model.providers.ProviderStatus
 import de.solidblocks.rds.controller.model.providers.ProvidersRepository
 import de.solidblocks.rds.controller.model.tables.references.CONFIGURATION_VALUES
 import de.solidblocks.rds.controller.model.tables.references.PROVIDERS
@@ -104,6 +105,29 @@ class ProvidersRepositoryTest {
         assertThat(entity.configValues[0].name).isEqualTo("abc")
         assertThat(entity.configValues[0].value).isEqualTo("def")
         assertThat(entity.configValues).hasSize(1)
+        assertThat(entity.status).isEqualTo(ProviderStatus.UNKNOWN)
+    }
+
+    @Test
+    fun testUpdateStatus(database: Database) {
+        val repository = ProvidersRepository(database.dsl)
+
+        val created = repository.create("update-status", controller)
+        assertThat(created.status).isEqualTo(ProviderStatus.UNKNOWN)
+
+        val entity = repository.read("update-status")!!
+        assertThat(entity.status).isEqualTo(ProviderStatus.UNKNOWN)
+
+        repository.updateStatus(entity.id, ProviderStatus.ERROR)
+
+        val updated = repository.read("update-status")!!
+        assertThat(updated.status).isEqualTo(ProviderStatus.ERROR)
+
+        repository.resetStatus()
+
+        val afterReset = repository.read("update-status")!!
+        assertThat(afterReset.status).isEqualTo(ProviderStatus.UNKNOWN)
+
     }
 
     @Test

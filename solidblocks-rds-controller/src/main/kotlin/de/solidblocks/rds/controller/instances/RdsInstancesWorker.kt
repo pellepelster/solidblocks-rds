@@ -81,7 +81,7 @@ class RdsInstancesWorker(
     private fun work(rdsInstance: RdsInstanceEntity): Boolean {
         logger.info { "starting work for rds instance '${rdsInstance.name} (${rdsInstance.id})'" }
 
-        val hetznerApi = providersManager.createProviderInstance(rdsInstance.provider) ?: run {
+        val hetznerApi = providersManager.createProviderApi(rdsInstance.provider) ?: run {
             logger.info { "could not create provider instance for rds instance '${rdsInstance.id}'" }
             return false
         }
@@ -135,7 +135,7 @@ class RdsInstancesWorker(
 
     fun runningInstances(): List<RunningInstanceInfo> {
         return rdsInstancesManager.listInternal().map { rdsInstance ->
-            val hetznerApi = providersManager.createProviderInstance(rdsInstance.provider) ?: run {
+            val hetznerApi = providersManager.createProviderApi(rdsInstance.provider) ?: run {
                 logger.info { "could not create provider instance for rds instance '${rdsInstance.id}'" }
                 return@map null
             }

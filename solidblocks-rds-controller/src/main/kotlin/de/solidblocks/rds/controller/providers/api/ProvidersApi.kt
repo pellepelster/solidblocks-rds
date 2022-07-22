@@ -8,7 +8,7 @@ import de.solidblocks.rds.controller.providers.ProvidersManager
 import io.vertx.ext.web.RoutingContext
 import java.util.*
 
-class ProvidersApi(apiHttpServer: ApiHttpServer, val manager: ProvidersManager) {
+class ProvidersApi(apiHttpServer: ApiHttpServer, private val manager: ProvidersManager) {
 
     init {
         apiHttpServer.configureSubRouter("/api/v1/providers", configure = { router ->

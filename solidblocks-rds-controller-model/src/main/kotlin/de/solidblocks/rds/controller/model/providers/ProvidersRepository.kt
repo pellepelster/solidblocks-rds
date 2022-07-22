@@ -13,6 +13,10 @@ class ProvidersRepository(dsl: DSLContext) : BaseRepository(dsl) {
 
     val providers = PROVIDERS.`as`("providers")
 
+    init {
+        resetStatus()
+    }
+
     fun create(
         name: String,
         controller: ControllerEntity,
@@ -21,8 +25,8 @@ class ProvidersRepository(dsl: DSLContext) : BaseRepository(dsl) {
         val id = UUID.randomUUID()
 
         dsl.insertInto(PROVIDERS).columns(
-            PROVIDERS.ID, PROVIDERS.CONTROLLER, PROVIDERS.NAME, PROVIDERS.DELETED
-        ).values(id, controller.id, name, false).execute()
+            PROVIDERS.ID, PROVIDERS.CONTROLLER, PROVIDERS.NAME, PROVIDERS.STATUS, PROVIDERS.DELETED
+        ).values(id, controller.id, name, ProviderStatus.UNKNOWN.toString(), false).execute()
 
         configValues.forEach {
             setConfiguration(ProviderId(id), it.key, it.value)
@@ -45,6 +49,7 @@ class ProvidersRepository(dsl: DSLContext) : BaseRepository(dsl) {
             ProviderEntity(
                 id = it.key.id!!,
                 name = it.key.name!!,
+                status = ProviderStatus.valueOf(it.key.status!!),
                 controller = it.key.controller!!,
                 configValues = it.value.map {
                     if (it.getValue(CONFIGURATION_VALUES.KEY_) == null) {
@@ -97,4 +102,13 @@ class ProvidersRepository(dsl: DSLContext) : BaseRepository(dsl) {
         key: String,
         value: String
     ) = setConfiguration(ProviderId(id), key, value)
+
+    fun updateStatus(id: UUID, status: ProviderStatus) =
+        dsl.update(providers).set(providers.STATUS, status.toString()).where(providers.ID.eq(id)).execute() == 1
+
+    fun resetStatus() {
+        dsl.update(providers).set(providers.STATUS, ProviderStatus.UNKNOWN.toString()).execute()
+    }
+
+
 }

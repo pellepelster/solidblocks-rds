@@ -1,6 +1,5 @@
 package de.solidblocks.rds.controller
 
-import de.solidblocks.rds.agent.MtlsHttpClient
 import de.solidblocks.rds.base.Database
 import de.solidblocks.rds.controller.controllers.ControllersManager
 import de.solidblocks.rds.controller.instances.RdsInstancesManager
@@ -10,17 +9,14 @@ import de.solidblocks.rds.controller.model.controllers.ControllersRepository
 import de.solidblocks.rds.controller.model.providers.ProvidersRepository
 import de.solidblocks.rds.controller.model.instances.RdsInstancesRepository
 import de.solidblocks.rds.controller.providers.HetznerApi
-import de.solidblocks.rds.controller.providers.ProvidersWorker
 import de.solidblocks.rds.controller.providers.ProvidersManager
 import de.solidblocks.rds.controller.providers.api.ProviderCreateRequest
-import de.solidblocks.rds.shared.VersionResponse
 import de.solidblocks.rds.test.ManagementTestDatabaseExtension
+import io.mockk.mockk
 import me.tomsdevsn.hetznercloud.HetznerCloudAPI
 import mu.KotlinLogging
 import org.assertj.core.api.Assertions.assertThat
-import org.awaitility.Awaitility
 import org.awaitility.Awaitility.await
-import org.awaitility.kotlin.await
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Disabled
@@ -29,7 +25,6 @@ import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable
 import org.junit.jupiter.api.extension.ExtendWith
 import java.nio.file.Path
-import java.time.Duration
 import java.time.Duration.ofMinutes
 import java.time.Duration.ofSeconds
 import kotlin.io.path.exists
@@ -76,8 +71,7 @@ class SolidlocksRdsIntegrationTest {
     fun testCreateRdsInstance(database: Database) {
 
         val controllersManager = ControllersManager(ControllersRepository(database.dsl))
-        val providersManager = ProvidersManager(ProvidersRepository(database.dsl), controllersManager)
-        val providersWorker = ProvidersWorker(providersManager)
+        val providersManager = ProvidersManager(ProvidersRepository(database.dsl), controllersManager, mockk())
 
         val rdsInstancesManager = RdsInstancesManager(RdsInstancesRepository(database.dsl), providersManager, controllersManager)
         val rdsInstancesWorker = RdsInstancesWorker(rdsInstancesManager, providersManager, controllersManager)
@@ -86,7 +80,7 @@ class SolidlocksRdsIntegrationTest {
             providersManager.create(ProviderCreateRequest(name = "hetzner1", apiKey = System.getenv("HCLOUD_TOKEN")))
         rdsInstancesManager.create(RdsInstanceCreateRequest(name = "rds-instance1", provider.data!!.id))
 
-        assertThat(providersWorker.work()).isTrue
+        assertThat(providersManager.work()).isTrue
         assertThat(rdsInstancesWorker.work()).isTrue
 
         val runningInstancesStatus = await().atMost(ofMinutes(2)).pollInterval(ofSeconds(5)).until({

@@ -11,6 +11,7 @@ data class ProviderEntity(
     val id: UUID,
     val name: String,
     val controller: UUID,
+    val status: ProviderStatus,
     val configValues: List<CloudConfigValue>
 
 ) {

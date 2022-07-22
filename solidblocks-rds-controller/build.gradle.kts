@@ -28,6 +28,10 @@ dependencies {
 
     testImplementation(project(":solidblocks-rds-postgresql-agent"))
     testImplementation(project(":solidblocks-rds-test"))
+
+    testImplementation("io.rest-assured:rest-assured:5.1.1")
+    testImplementation("io.rest-assured:json-path:5.1.1")
+    testImplementation("io.rest-assured:kotlin-extensions:5.1.1")
 }
 
 application {
