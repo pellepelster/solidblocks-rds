@@ -3,6 +3,7 @@ package de.solidblocks.rds.controller.model
 import de.solidblocks.rds.base.Database
 import de.solidblocks.rds.controller.model.controllers.ControllersRepository
 import de.solidblocks.rds.controller.model.instances.RdsInstancesRepository
+import de.solidblocks.rds.controller.model.providers.ProviderStatus
 import de.solidblocks.rds.controller.model.providers.ProvidersRepository
 import de.solidblocks.rds.test.ManagementTestDatabaseExtension
 import org.assertj.core.api.Assertions.assertThat
@@ -20,12 +21,12 @@ class RdsInstancesRepositoryTest {
 
     @BeforeAll
     fun beforeAll(database: Database) {
-        val repository = ProvidersRepository(database.dsl)
+        val providersRepository = ProvidersRepository(database.dsl)
 
         val controllersRepository = ControllersRepository(database.dsl)
         val controller = controllersRepository.create("controller-${UUID.randomUUID()}")
 
-        val provider = repository.create("provider-${UUID.randomUUID()}", controller )
+        val provider = providersRepository.create("provider-${UUID.randomUUID()}", controller)
         providerId = provider.id
     }
 
@@ -94,6 +95,7 @@ class RdsInstancesRepositoryTest {
         assertThat(entity.configValues[0].name).isEqualTo("abc")
         assertThat(entity.configValues[0].value).isEqualTo("def")
         assertThat(entity.configValues).hasSize(1)
+        assertThat(entity.status).isEqualTo(ProviderStatus.UNKNOWN)
     }
 
     @Test
@@ -107,4 +109,27 @@ class RdsInstancesRepositoryTest {
         assertThat(entity).isNotNull
         assertThat(entity.configValues).hasSize(0)
     }
+
+    @Test
+    fun testUpdateStatus(database: Database) {
+        val repository = RdsInstancesRepository(database.dsl)
+
+        val created = repository.create(providerId, "update-status")
+        assertThat(created.status).isEqualTo(ProviderStatus.UNKNOWN)
+
+        val entity = repository.read("update-status")!!
+        assertThat(entity.status).isEqualTo(ProviderStatus.UNKNOWN)
+
+        repository.updateStatus(entity.id, ProviderStatus.ERROR)
+
+        val updated = repository.read("update-status")!!
+        assertThat(updated.status).isEqualTo(ProviderStatus.ERROR)
+
+        repository.resetStatus()
+
+        val afterReset = repository.read("update-status")!!
+        assertThat(afterReset.status).isEqualTo(ProviderStatus.UNKNOWN)
+
+    }
+
 }

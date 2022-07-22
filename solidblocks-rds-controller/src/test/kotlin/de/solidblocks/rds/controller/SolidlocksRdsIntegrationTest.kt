@@ -11,6 +11,7 @@ import de.solidblocks.rds.controller.model.instances.RdsInstancesRepository
 import de.solidblocks.rds.controller.providers.HetznerApi
 import de.solidblocks.rds.controller.providers.ProvidersManager
 import de.solidblocks.rds.controller.providers.api.ProviderCreateRequest
+import de.solidblocks.rds.controller.utils.HetznerLabels
 import de.solidblocks.rds.test.ManagementTestDatabaseExtension
 import io.mockk.mockk
 import me.tomsdevsn.hetznercloud.HetznerCloudAPI
@@ -73,15 +74,15 @@ class SolidlocksRdsIntegrationTest {
         val controllersManager = ControllersManager(ControllersRepository(database.dsl))
         val providersManager = ProvidersManager(ProvidersRepository(database.dsl), controllersManager, mockk())
 
-        val rdsInstancesManager = RdsInstancesManager(RdsInstancesRepository(database.dsl), providersManager, controllersManager)
+        val rdsInstancesManager = RdsInstancesManager(RdsInstancesRepository(database.dsl), providersManager, controllersManager, mockk())
         val rdsInstancesWorker = RdsInstancesWorker(rdsInstancesManager, providersManager, controllersManager)
 
         val provider =
             providersManager.create(ProviderCreateRequest(name = "hetzner1", apiKey = System.getenv("HCLOUD_TOKEN")))
         rdsInstancesManager.create(RdsInstanceCreateRequest(name = "rds-instance1", provider.data!!.id))
 
-        assertThat(providersManager.work()).isTrue
-        assertThat(rdsInstancesWorker.work()).isTrue
+        assertThat(providersManager.applyAll()).isTrue
+        assertThat(rdsInstancesManager.applyAll()).isTrue
 
         val runningInstancesStatus = await().atMost(ofMinutes(2)).pollInterval(ofSeconds(5)).until({
             rdsInstancesWorker.runningInstancesStatus()
@@ -99,7 +100,7 @@ class SolidlocksRdsIntegrationTest {
     @Disabled
     fun testCreateRdsInstanceOld() {
         assertThat(hetznerApi.hasServer("server1")).isFalse
-        assertThat(hetznerApi.ensureVolume("server1-volume1")).isTrue
+        assertThat(hetznerApi.ensureVolume("server1-volume1", HetznerLabels())).isTrue
         assertThat(
             hetznerApi.ensureSSHKey(
                 "server1-sshkey1",
@@ -107,8 +108,8 @@ class SolidlocksRdsIntegrationTest {
             )
         ).isTrue
 
-        assertThat(hetznerApi.ensureServer("server1", "server1-volume1", "", "server1-sshkey1")).isNotNull
-        assertThat(hetznerApi.ensureServer("server1", "server1-volume1", "", "server1-sshkey1")).isNotNull
+        assertThat(hetznerApi.ensureServer("server1", "server1-volume1", "", "server1-sshkey1", HetznerLabels())).isNotNull
+        assertThat(hetznerApi.ensureServer("server1", "server1-volume1", "", "server1-sshkey1", HetznerLabels())).isNotNull
         assertThat(hetznerApi.hasServer("server1")).isTrue
         assertThat(hetznerApi.deleteServer("server1")).isTrue
         assertThat(hetznerApi.hasServer("server1")).isFalse

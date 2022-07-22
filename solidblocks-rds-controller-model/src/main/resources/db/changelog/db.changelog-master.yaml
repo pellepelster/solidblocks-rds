@@ -178,6 +178,11 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
+                  name: status
+                  type: varchar(256)
+                  constraints:
+                    nullable: false
+              - column:
                   name: deleted
                   type: boolean
                   constraints:

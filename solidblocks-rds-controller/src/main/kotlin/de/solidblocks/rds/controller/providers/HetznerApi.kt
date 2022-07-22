@@ -3,6 +3,7 @@ package de.solidblocks.rds.controller.providers
 import de.solidblocks.rds.controller.model.instances.RdsInstanceEntity
 import de.solidblocks.rds.controller.utils.Constants.cloudInitChecksumLabel
 import de.solidblocks.rds.controller.utils.Constants.managedByLabel
+import de.solidblocks.rds.controller.utils.Constants.rdsInstanceLabel
 import de.solidblocks.rds.controller.utils.Constants.versionLabel
 import de.solidblocks.rds.controller.utils.HetznerLabels
 import de.solidblocks.rds.controller.utils.Waiter
@@ -16,6 +17,7 @@ import me.tomsdevsn.hetznercloud.objects.request.SSHKeyRequest
 import me.tomsdevsn.hetznercloud.objects.request.ServerRequest
 import me.tomsdevsn.hetznercloud.objects.request.VolumeRequest
 import mu.KotlinLogging
+import java.util.*
 
 class HetznerApi(apiToken: String) {
 
@@ -77,7 +79,7 @@ class HetznerApi(apiToken: String) {
 
     fun getVolume(name: String) = hetznerCloudAPI.volumes.volumes.firstOrNull { it.name == name }
 
-    fun ensureVolume(name: String): Boolean {
+    fun ensureVolume(name: String, labels: HetznerLabels): Boolean {
 
         if (hasVolume(name)) {
             return true
@@ -85,7 +87,7 @@ class HetznerApi(apiToken: String) {
 
         logger.info { "creating volume '$name'" }
         val response = hetznerCloudAPI.createVolume(
-            VolumeRequest.builder().location("nbg1").name(name).size(16).format("xfs").build()
+            VolumeRequest.builder().location("nbg1").labels(labels.labels()).name(name).size(16).format("xfs").build()
         )
 
         return waitForVolumeAction(response.volume, response.action)
@@ -144,7 +146,13 @@ class HetznerApi(apiToken: String) {
             get() = "https://${ipAddress}:${agentPort}"
     }
 
-    fun ensureServer(serverName: String, volumeName: String, userData: String, sshKeyName: String): ServerInfo? {
+    fun ensureServer(
+        serverName: String,
+        volumeName: String,
+        userData: String,
+        sshKeyName: String,
+        labels: HetznerLabels
+    ): ServerInfo? {
 
         val volume = getVolume(volumeName)
         if (volume == null) {
@@ -164,11 +172,6 @@ class HetznerApi(apiToken: String) {
 
         if (server == null) {
             logger.info { "creating server '$serverName'" }
-
-            val labels = HetznerLabels()
-            labels.addLabel(managedByLabel, "true")
-            labels.addLabel(versionLabel, solidblocksVersion())
-            labels.addLabel(cloudInitChecksumLabel, solidblocksVersion())
 
             val response = hetznerCloudAPI.createServer(
                 ServerRequest.builder()
@@ -192,12 +195,6 @@ class HetznerApi(apiToken: String) {
             return null
         }
 
-        /*
-        if (server.volumes.any { it == volume.id }) {
-            return true
-        }
-        */
-
         if (server.volumes.none { it == volume.id }) {
             val response =
                 hetznerCloudAPI.attachVolumeToServer(
@@ -215,13 +212,12 @@ class HetznerApi(apiToken: String) {
             }
         }
 
-        val ipAddress = server.publicNet?.ipv4?.ip
-        if (ipAddress == null) {
-            logger.error { "could not determine ip address for server '$serverName'" }
-            return null
-        }
+        return serverInfo(serverName)
+    }
 
-        logger.info { "server '$serverName' is up and running, ip is '${ipAddress}'" }
+    public fun serverInfo(serverName: String): ServerInfo? {
+        val server = hetznerCloudAPI.getServerByName(serverName) ?: return null
+        val ipAddress = server.servers.firstOrNull()?.publicNet?.ipv4?.ip ?: return null
 
         return ServerInfo(ipAddress, 8080)
     }

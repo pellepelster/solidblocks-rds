@@ -5,12 +5,14 @@ import de.solidblocks.rds.controller.model.Constants
 import de.solidblocks.rds.controller.model.Constants.SERVER_PRIVATE_KEY
 import de.solidblocks.rds.controller.model.Constants.SERVER_PUBLIC_KEY
 import de.solidblocks.rds.controller.model.byName
+import de.solidblocks.rds.controller.model.providers.ProviderStatus
 import java.util.UUID
 
 data class RdsInstanceEntity(
     val id: UUID,
     val name: String,
     val provider: UUID,
+    val status: RdsInstanceStatus,
     val configValues: List<CloudConfigValue>
 ) {
     fun serverPrivateKey(): String = this.configValues.byName(SERVER_PRIVATE_KEY)!!

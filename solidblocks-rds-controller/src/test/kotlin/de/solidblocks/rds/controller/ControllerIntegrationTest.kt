@@ -1,22 +1,51 @@
 package de.solidblocks.rds.controller
 
 import de.solidblocks.rds.base.Database
+import de.solidblocks.rds.controller.providers.HetznerApi
 import de.solidblocks.rds.test.ManagementTestDatabaseExtension
 import io.restassured.module.kotlin.extensions.Extract
 import io.restassured.module.kotlin.extensions.Given
 import io.restassured.module.kotlin.extensions.Then
 import io.restassured.module.kotlin.extensions.When
+import me.tomsdevsn.hetznercloud.HetznerCloudAPI
+import org.assertj.core.api.Assertions
 import org.awaitility.kotlin.await
 import org.hamcrest.Matchers
 import org.hamcrest.Matchers.*
+import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable
 import org.junit.jupiter.api.extension.ExtendWith
 import java.time.Duration
 
 @ExtendWith(ManagementTestDatabaseExtension::class)
 @EnabledIfEnvironmentVariable(named = "HCLOUD_TOKEN", matches = ".*")
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ControllerIntegrationTest {
+
+    private val hetznerApi = HetznerApi(System.getenv("HCLOUD_TOKEN"))
+    private val hetznerCloudAPI = HetznerCloudAPI(System.getenv("HCLOUD_TOKEN"))
+
+    @BeforeAll
+    fun beforeAll() {
+        cleanTestbed()
+    }
+
+    @AfterAll
+    fun afterAll() {
+        cleanTestbed()
+    }
+
+    fun cleanTestbed() {
+        Assertions.assertThat(hetznerApi.deleteAllSSHKeys()).isTrue
+        Assertions.assertThat(hetznerApi.deleteAllVolumes()).isTrue
+
+        hetznerCloudAPI.servers.servers.forEach {
+            hetznerCloudAPI.deleteServer(it.id)
+        }
+    }
 
     @Test
     fun testManageProviders(database: Database) {
@@ -70,7 +99,7 @@ class ControllerIntegrationTest {
             body("provider.status", equalTo("UNKNOWN"))
         }
 
-        val id: String = Given {
+        val providerId: String = Given {
             port(8080)
         } When {
             get("/api/v1/providers")
@@ -85,7 +114,7 @@ class ControllerIntegrationTest {
         Given {
             port(8080)
         } When {
-            get("/api/v1/providers/${id}")
+            get("/api/v1/providers/${providerId}")
         } Then {
             statusCode(200)
             body("provider.name", equalTo("provider1"))
@@ -95,7 +124,7 @@ class ControllerIntegrationTest {
             val status: String = Given {
                 port(8080)
             } When {
-                get("/api/v1/providers/${id}")
+                get("/api/v1/providers/${providerId}")
             } Then {
                 statusCode(200)
                 body("provider.name", equalTo("provider1"))
@@ -105,5 +134,42 @@ class ControllerIntegrationTest {
 
             status == "HEALTHY"
         }
+
+        val instanceId: String = Given {
+            port(8080)
+            body(
+                """
+                {
+                    "name": "instance1",
+                    "provider": "${providerId}"
+                }
+            """.trimIndent()
+            )
+        } When {
+            post(
+                "/api/v1/rds-instances"
+            )
+        } Then {
+            statusCode(201)
+            body("rdsInstance.status", equalTo("UNKNOWN"))
+        } Extract {
+            path("rdsInstance.id")
+        }
+
+        await.atMost(Duration.ofSeconds(120)).until {
+            val status: String = Given {
+                port(8080)
+            } When {
+                get("/api/v1/rds-instances/${instanceId}")
+            } Then {
+                statusCode(200)
+            } Extract {
+                path("rdsInstance.status")
+            }
+
+            status == "HEALTHY"
+        }
+
+
     }
 }

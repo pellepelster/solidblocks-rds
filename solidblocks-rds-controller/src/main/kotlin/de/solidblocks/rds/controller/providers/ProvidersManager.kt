@@ -2,7 +2,6 @@ package de.solidblocks.rds.controller.providers
 
 import com.github.kagkarlsson.scheduler.task.ExecutionContext
 import com.github.kagkarlsson.scheduler.task.TaskInstance
-import com.github.kagkarlsson.scheduler.task.helper.OneTimeTask
 import com.github.kagkarlsson.scheduler.task.helper.Tasks
 import com.github.kagkarlsson.scheduler.task.schedule.FixedDelay
 import de.solidblocks.rds.base.Utils
@@ -33,25 +32,25 @@ class ProvidersManager(
 
     private val logger = KotlinLogging.logger {}
 
-    private var applyTask: OneTimeTask<ProviderEntity> = Tasks.oneTime(
+    private var applyTask = Tasks.oneTime(
         "providers-apply-task",
         ProviderEntity::class.java
     )
         .execute { inst: TaskInstance<ProviderEntity>, ctx: ExecutionContext ->
-            work(inst.data)
+            apply(inst.data)
         }
 
-    var healthcheckTask = Tasks.recurring("providers-healthcheck", FixedDelay.ofSeconds(15))
+    private var healthcheckTask = Tasks.recurring("providers-healthcheck-task", FixedDelay.ofSeconds(15))
         .execute { inst: TaskInstance<Void>, ctx: ExecutionContext ->
             repository.list().forEach { provider ->
 
-                val providerApi = createProviderApi(provider.id)
+                val api = createProviderApi(provider.id)
 
-                if (providerApi == null) {
-                    logger.info { "could not create provider instance for provider '${provider.name}'" }
+                if (api == null) {
+                    logger.info { "could not create api for provider '${provider.name}'" }
                     repository.updateStatus(provider.id, ProviderStatus.ERROR)
                 } else {
-                    if (providerApi.hasSSHKey(Constants.sshKeyName(provider))) {
+                    if (api.hasSSHKey(Constants.sshKeyName(provider))) {
                         logger.info { "provider '${provider.name}' is healthy" }
                         repository.updateStatus(provider.id, ProviderStatus.HEALTHY)
                     } else {
@@ -64,8 +63,8 @@ class ProvidersManager(
         }
 
     init {
-        rdsScheduler.addTask(applyTask)
-        rdsScheduler.addRecurringTasks(healthcheckTask)
+        rdsScheduler.addOneTimeTask(applyTask)
+        rdsScheduler.addRecurringTask(healthcheckTask)
     }
 
     fun read(id: UUID) = repository.read(id)?.let {
@@ -121,9 +120,9 @@ class ProvidersManager(
 
     }
 
-    fun work(): Boolean {
+    fun applyAll(): Boolean {
         return listInternal().map {
-            work(it)
+            apply(it)
         }.all { it }
     }
 
@@ -131,17 +130,17 @@ class ProvidersManager(
 
     fun sshKeyName(id: UUID) = repository.read(id)?.let { Constants.sshKeyName(it) }
 
-    private fun work(provider: ProviderEntity): Boolean {
+    private fun apply(provider: ProviderEntity): Boolean {
         logger.info { "starting work for provider '${provider.name} (${provider.id})'" }
 
-        val hetznerApi = createProviderApi(provider.id)
+        val api = createProviderApi(provider.id)
 
-        if (hetznerApi == null) {
-            logger.info { "could not create provider instance for provider '${provider.name} (${provider.id})'" }
+        if (api == null) {
+            logger.info { "could not create api for provider '${provider.name} (${provider.id})'" }
             return false
         }
 
-        val response = hetznerApi.ensureSSHKey(Constants.sshKeyName(provider), provider.sshPublicKey())
+        val response = api.ensureSSHKey(Constants.sshKeyName(provider), provider.sshPublicKey())
 
         if (!response) {
             logger.error {

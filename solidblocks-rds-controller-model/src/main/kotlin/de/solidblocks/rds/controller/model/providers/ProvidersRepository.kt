@@ -110,5 +110,4 @@ class ProvidersRepository(dsl: DSLContext) : BaseRepository(dsl) {
         dsl.update(providers).set(providers.STATUS, ProviderStatus.UNKNOWN.toString()).execute()
     }
 
-
 }
